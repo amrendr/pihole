@@ -14,32 +14,41 @@ sudo curl 'https://raw.githubusercontent.com/kboghdady/youTube_ads_4_pi-hole/mas
 sudo curl 'https://raw.githubusercontent.com/amrendr/pihole/main/youtube/ignore.list' >> $ignorelist
 
 
-echo 'Create list from FTL db'
-sudo /usr/bin/sqlite3 /etc/pihole/pihole-FTL.db "select domain from queries where domain like '%googlevideo.com'" > $tempblacklist
+echo 'blacklist'
+sudo curl 'https://raw.githubusercontent.com/kboghdady/youTube_ads_4_pi-hole/master/black.list' > $tempblacklist
 
 echo 'Create list from blocked domain list'
 sudo /usr/bin/sqlite3 /etc/pihole/gravity.db "select domain from domainlist where domain like '%googlevideo.com'" > $blacklist
 
 
+# check to see if gawk is installed. if not it will install it
+dpkg -l | grep -qw gawk || sudo apt-get install gawk -y
+
 # Remove duplicates
 echo 'Remove duplicates'
 gawk -i inplace '!a[$0]++' $tempblacklist
+wait
 gawk -i inplace '!a[$0]++' $blacklist
+wait
 gawk -i inplace '!a[$0]++' $ignorelist
+wait
 
 # Remove already blocked domain from templist
 echo 'Remove adlist from potential blacklist'
 while read line ;  do  sed -i "/.*$line.*/d" $tempblacklist ; done < $adlist
+wait
 echo 'Remove existing blacklist from potential blacklist'
 while read line ;  do  sed -i "/.*$line.*/d" $tempblacklist ; done < $blacklist
+wait
 
 echo 'Remove ignored list from potential blacklist'
 # remove the domains from the ignore.list 
 while read line ;  do  sed -i "/.*$line.*/d" $tempblacklist ; done < $ignorelist
+wait
 
-echo 'Remove ignored list from existing blacklist'
+echo 'Remove existing blacklisted domain'
 # this in case you have an old blocked domain the the database 
-while read ignoredDns ; do sudo /usr/bin/sqlite3 /etc/pihole/gravity.db "delete from domainlist where domain like '%$ignoredDns%' " ; done < $ignorelist
+sudo /usr/bin/sqlite3 /etc/pihole/gravity.db "delete from domainlist where domain like '%googlevideo.com%' "
 
 
 echo 'add to blacklist domain'
